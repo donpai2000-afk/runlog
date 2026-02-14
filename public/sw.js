@@ -1,5 +1,5 @@
 /* eslint-disable no-restricted-globals */
-const CACHE_NAME = "runlog-static-v5";
+const CACHE_NAME = "runlog-static-v6";
 const APP_SHELL = [
   "/",
   "/manifest.webmanifest",
@@ -11,17 +11,11 @@ const APP_SHELL = [
 self.addEventListener("install", (event) => {
   event.waitUntil(
     (async () => {
-      try {
-        const cache = await caches.open(CACHE_NAME);
-        for (const url of APP_SHELL) {
-          try {
-            await cache.add(new Request(url, { cache: "reload" }));
-          } catch (_) {
-            // 1件失敗しても install 全体は失敗させない
-          }
-        }
-      } catch (_) {
-        // ここで落ちても install を失敗扱いにしない
+      const cache = await caches.open(CACHE_NAME);
+      for (const url of APP_SHELL) {
+        try {
+          await cache.add(new Request(url, { cache: "reload" }));
+        } catch (_) {}
       }
     })()
   );
@@ -36,17 +30,4 @@ self.addEventListener("activate", (event) => {
       await self.clients.claim();
     })()
   );
-});
-
-self.addEventListener("fetch", (event) => {
-  const req = event.request;
-  const url = new URL(req.url);
-  if (url.origin !== self.location.origin) return;
-
-  if (req.mode === "navigate") {
-    event.respondWith(fetch(req).catch(() => caches.match("/")));
-    return;
-  }
-
-  event.respondWith(caches.match(req).then((c) => c || fetch(req)));
 });
