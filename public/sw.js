@@ -1,7 +1,8 @@
 /* eslint-disable no-restricted-globals */
-const CACHE_NAME = "runlog-static-v6";
+const CACHE_NAME = "runlog-static-v7";
+
+// オフライン不要なら、プリキャッシュは最小
 const APP_SHELL = [
-  "/",
   "/manifest.webmanifest",
   "/icon-192x192.png",
   "/icon-512x512.png",
@@ -23,5 +24,14 @@ self.addEventListener("install", (event) => {
 });
 
 self.addEventListener("activate", (event) => {
-  event.waitUntil(self.clients.claim());
+  event.waitUntil(
+    (async () => {
+      // 古いキャッシュを削除
+      const keys = await caches.keys();
+      await Promise.all(keys.map((k) => (k === CACHE_NAME ? null : caches.delete(k))));
+      await self.clients.claim();
+    })()
+  );
 });
+
+// fetch ハンドラは置かない（ネット挙動を変えない）
