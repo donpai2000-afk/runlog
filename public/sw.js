@@ -23,11 +23,5 @@ self.addEventListener("install", (event) => {
 });
 
 self.addEventListener("activate", (event) => {
-  event.waitUntil(
-    (async () => {
-      const keys = await caches.keys();
-      await Promise.all(keys.map((k) => (k === CACHE_NAME ? null : caches.delete(k))));
-      await self.clients.claim();
-    })()
-  );
+  event.waitUntil(self.clients.claim());
 });
