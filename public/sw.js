@@ -1,5 +1,5 @@
 /* eslint-disable no-restricted-globals */
-const CACHE_NAME = "runlog-static-v4";
+const CACHE_NAME = "runlog-static-v5";
 const APP_SHELL = [
   "/",
   "/manifest.webmanifest",
@@ -11,13 +11,17 @@ const APP_SHELL = [
 self.addEventListener("install", (event) => {
   event.waitUntil(
     (async () => {
-      const cache = await caches.open(CACHE_NAME);
-      for (const url of APP_SHELL) {
-        try {
-          await cache.add(new Request(url, { cache: "reload" }));
-        } catch (e) {
-          // 失敗してもSWを殺さない
+      try {
+        const cache = await caches.open(CACHE_NAME);
+        for (const url of APP_SHELL) {
+          try {
+            await cache.add(new Request(url, { cache: "reload" }));
+          } catch (_) {
+            // 1件失敗しても install 全体は失敗させない
+          }
         }
+      } catch (_) {
+        // ここで落ちても install を失敗扱いにしない
       }
     })()
   );
@@ -26,11 +30,12 @@ self.addEventListener("install", (event) => {
 
 self.addEventListener("activate", (event) => {
   event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(keys.map((k) => (k === CACHE_NAME ? null : caches.delete(k))))
-    )
+    (async () => {
+      const keys = await caches.keys();
+      await Promise.all(keys.map((k) => (k === CACHE_NAME ? null : caches.delete(k))));
+      await self.clients.claim();
+    })()
   );
-  self.clients.claim();
 });
 
 self.addEventListener("fetch", (event) => {
@@ -42,5 +47,6 @@ self.addEventListener("fetch", (event) => {
     event.respondWith(fetch(req).catch(() => caches.match("/")));
     return;
   }
+
   event.respondWith(caches.match(req).then((c) => c || fetch(req)));
 });
